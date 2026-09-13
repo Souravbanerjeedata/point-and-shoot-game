@@ -2,75 +2,294 @@
 
 const canvas = document.getElementById("canvas1");
 const ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
 const collisionCanvas = document.getElementById("collisionCanvas");
-const collisionCtx = collisionCanvas.getContext("2d");
-collisionCanvas.width = window.innerWidth;
-collisionCanvas.height = window.innerHeight;
+const collisionCtx = collisionCanvas.getContext("2d", {
+  willReadFrequently: true,
+});
 
-let timeToNextRaven = 0;
-let ravenInterval = 500;
+const enemiesConfig = [
+  {
+    id: "bat",
+    name: "Night Bat",
+    src: "enemy_bat_3.png",
+    thumb: "thumbs/bat.png",
+    spriteWidth: 266,
+    spriteHeight: 188,
+    maxFrame: 5,
+    sizeRange: [0.22, 0.42],
+  },
+  {
+    id: "fly",
+    name: "Dark Fly",
+    src: "enemy_fly.png",
+    thumb: "thumbs/fly.png",
+    spriteWidth: 60,
+    spriteHeight: 44,
+    maxFrame: 5,
+    sizeRange: [1.0, 1.8],
+  },
+  {
+    id: "ghost2",
+    name: "Shadow Eyes",
+    src: "enemy_ghost_2.png",
+    thumb: "thumbs/ghost2.png",
+    spriteWidth: 80,
+    spriteHeight: 89,
+    maxFrame: 1,
+    sizeRange: [0.7, 1.3],
+  },
+  {
+    id: "ghost3",
+    name: "Skull Spirit",
+    src: "enemy_ghost_3.png",
+    thumb: "thumbs/ghost3.png",
+    spriteWidth: 87,
+    spriteHeight: 70,
+    maxFrame: 5,
+    sizeRange: [0.85, 1.5],
+  },
+  {
+    id: "ghost4",
+    name: "Glowing Eyes",
+    src: "enemy_ghost_4.png",
+    thumb: "thumbs/ghost4.png",
+    spriteWidth: 60,
+    spriteHeight: 70,
+    maxFrame: 5,
+    sizeRange: [0.9, 1.6],
+  },
+  {
+    id: "raven",
+    name: "Raven",
+    src: "raven.png",
+    thumb: "thumbs/raven.png",
+    spriteWidth: 271,
+    spriteHeight: 194,
+    maxFrame: 5,
+    sizeRange: [0.2, 0.4],
+  },
+];
+
+const placesConfig = [
+  {
+    id: "alien_planet",
+    name: "Alien Planet",
+    src: "backgrounds/alien_planet.jpg",
+  },
+  {
+    id: "night_hills",
+    name: "Night Hills",
+    src: "backgrounds/night_hills.jpg",
+  },
+  {
+    id: "forest_clearing",
+    name: "Forest Clearing",
+    src: "backgrounds/forest_clearing.jpg",
+  },
+  {
+    id: "campfire_forest",
+    name: "Campfire Forest",
+    src: "backgrounds/campfire_forest.jpg",
+  },
+  {
+    id: "starry_night",
+    name: "Starry Night",
+    src: "backgrounds/starry_night.jpg",
+  },
+];
+
+// ===== STATE =====
+let selectedEnemy = null;
+let selectedPlace = null;
+let bgImage = new Image();
+let enemyImage = new Image();
+let currentEnemyConfig = null;
+
+let timeToNextEnemy = 0;
+let enemyInterval = 500;
 let lastTime = 0;
 let score = 0;
+let lives = 5;
 let gameOver = false;
-ctx.font = "50px Impact";
+let gameStarted = false;
 
-let ravens = [];
-class Raven {
+let enemies = [];
+let explosions = [];
+
+// ===== DOM =====
+const menuEl = document.getElementById("menu");
+const enemySelectEl = document.getElementById("enemy-select");
+const placeSelectEl = document.getElementById("place-select");
+const startBtn = document.getElementById("start-btn");
+const gameOverEl = document.getElementById("game-over");
+const finalScoreEl = document.getElementById("final-score");
+const restartBtn = document.getElementById("restart-btn");
+
+// ===== INIT MENU =====
+function buildMenu() {
+  enemiesConfig.forEach((cfg) => {
+    const card = document.createElement("div");
+    card.className = "option-card";
+    card.dataset.id = cfg.id;
+    // Use zoomed single-frame thumbnail, not the full sprite sheet
+    card.innerHTML = `<img src="${cfg.thumb}" alt="${cfg.name}" /><span>${cfg.name}</span>`;
+    card.addEventListener("click", () => {
+      document
+        .querySelectorAll("#enemy-select .option-card")
+        .forEach((c) => c.classList.remove("selected"));
+      card.classList.add("selected");
+      selectedEnemy = cfg.id;
+      updateStartBtn();
+    });
+    enemySelectEl.appendChild(card);
+  });
+
+  placesConfig.forEach((cfg) => {
+    const card = document.createElement("div");
+    card.className = "option-card place";
+    card.dataset.id = cfg.id;
+    card.innerHTML = `<img src="${cfg.src}" alt="${cfg.name}" /><span>${cfg.name}</span>`;
+    card.addEventListener("click", () => {
+      document
+        .querySelectorAll("#place-select .option-card")
+        .forEach((c) => c.classList.remove("selected"));
+      card.classList.add("selected");
+      selectedPlace = cfg.id;
+      updateStartBtn();
+    });
+    placeSelectEl.appendChild(card);
+  });
+}
+
+function updateStartBtn() {
+  startBtn.disabled = !(selectedEnemy && selectedPlace);
+}
+
+startBtn.addEventListener("click", startGame);
+restartBtn.addEventListener("click", () => {
+  gameOverEl.classList.add("hidden");
+  menuEl.style.display = "flex";
+  gameStarted = false;
+});
+
+function startGame() {
+  if (gameStarted) return;
+  currentEnemyConfig = enemiesConfig.find((e) => e.id === selectedEnemy);
+  const place = placesConfig.find((p) => p.id === selectedPlace);
+
+  enemyImage = new Image();
+  bgImage = new Image();
+
+  const loadImg = (img, src) =>
+    new Promise((resolve) => {
+      img.onload = () => resolve();
+      img.onerror = () => resolve();
+      img.src = src;
+      if (img.complete && img.naturalWidth > 0) resolve();
+    });
+
+  Promise.all([
+    loadImg(enemyImage, currentEnemyConfig.src),
+    loadImg(bgImage, place.src),
+  ]).then(() => {
+    menuEl.style.display = "none";
+    resetGame();
+    gameStarted = true;
+    lastTime = performance.now();
+    requestAnimationFrame(animate);
+  });
+}
+
+function resetGame() {
+  score = 0;
+  lives = 5;
+  gameOver = false;
+  enemies = [];
+  explosions = [];
+  timeToNextEnemy = 0;
+  lastTime = 0;
+  enemyInterval = 500;
+  resizeCanvas();
+}
+
+// ===== CANVAS SIZE =====
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  collisionCanvas.width = window.innerWidth;
+  collisionCanvas.height = window.innerHeight;
+  // scale font based on screen
+  const base = Math.min(canvas.width, canvas.height);
+  ctx.font = `${Math.max(28, Math.floor(base * 0.06))}px Impact`;
+}
+window.addEventListener("resize", () => {
+  if (gameStarted && !gameOver) resizeCanvas();
+});
+
+// ===== CLASSES =====
+class Enemy {
   constructor() {
-    this.spriteWidth = 271;
-    this.spriteHeight = 194;
-    this.sizeModifier = Math.random() * 0.4 + 0.2;
+    const cfg = currentEnemyConfig;
+    this.spriteWidth = cfg.spriteWidth;
+    this.spriteHeight = cfg.spriteHeight;
+    this.sizeModifier =
+      Math.random() * (cfg.sizeRange[1] - cfg.sizeRange[0]) + cfg.sizeRange[0];
     this.width = this.spriteWidth * this.sizeModifier;
     this.height = this.spriteHeight * this.sizeModifier;
     this.x = canvas.width;
-    this.y = Math.random() * (canvas.height - this.height);
-    this.directionX = Math.random() * 5 + 3;
-    this.directionY = Math.random() * 5 - 2.5;
+    this.y = Math.random() * Math.max(0, canvas.height - this.height);
+
+    const baseMin = 1.25;
+    const baseMax = 3.25;
+    const finalMin = 2.5;
+    const finalMax = 6.5;
+    const steps = Math.min(Math.floor(score / 10), 5); // 0..5 steps
+    const t = steps / 5; // 0 → 1
+    const curMin = baseMin + (finalMin - baseMin) * t;
+    const curMax = baseMax + (finalMax - baseMax) * t;
+    this.directionX = Math.random() * (curMax - curMin) + curMin;
+    this.directionY = Math.random() * 3 - 1.5; // also slightly calmer vertical
+
     this.markerForDeletion = false;
-    this.image = new Image();
-    this.image.src = "raven.png";
+    this.image = enemyImage;
     this.frame = 0;
-    this.maxFrame = 4;
+    this.maxFrame = cfg.maxFrame;
     this.timeSinceFlap = 0;
-    this.flapInterval = Math.random() * 50 + 50;
+    this.flapInterval = Math.random() * 50 + 40;
     this.randomColors = [
       Math.floor(Math.random() * 255),
       Math.floor(Math.random() * 255),
       Math.floor(Math.random() * 255),
     ];
-    this.color =
-      "rgb(" +
-      this.randomColors[0] +
-      "," +
-      this.randomColors[1] +
-      "," +
-      this.randomColors[2] +
-      ")";
-    this.hasTrail = Math.random() > 0.5;
+    this.color = `rgb(${this.randomColors[0]},${this.randomColors[1]},${this.randomColors[2]})`;
   }
+
   update(deltaTime) {
     if (this.y < 0 || this.y > canvas.height - this.height) {
       this.directionY *= -1;
     }
     this.x -= this.directionX;
     this.y += this.directionY;
-    if (this.x < 0 - this.width) this.markerForDeletion = true;
+
     this.timeSinceFlap += deltaTime;
     if (this.timeSinceFlap > this.flapInterval) {
-      if (this.frame > this.maxFrame) this.frame = 0;
-      else this.frame++;
+      this.frame = this.frame >= this.maxFrame ? 0 : this.frame + 1;
       this.timeSinceFlap = 0;
-      if (this.hasTrail) {
-        for (let i = 0; i < 5; i++) {
-          particles.push(new Particle(this.x, this.y, this.width, this.color));
+    }
+
+    // Missed – left the screen
+    if (this.x < 0 - this.width) {
+      this.markerForDeletion = true;
+      if (!gameOver) {
+        lives--;
+        if (lives <= 0) {
+          lives = 0;
+          gameOver = true;
         }
       }
     }
-    if (this.x < 0 - this.width) gameOver = true;
   }
+
   draw() {
     collisionCtx.fillStyle = this.color;
     collisionCtx.fillRect(this.x, this.y, this.width, this.height);
@@ -88,8 +307,6 @@ class Raven {
   }
 }
 
-let explosions = [];
-
 class Explosion {
   constructor(x, y, size) {
     this.image = new Image();
@@ -100,14 +317,18 @@ class Explosion {
     this.x = x;
     this.y = y;
     this.frame = 0;
-    this.sound = new Audio();
-    this.sound.src = "boom.wav";
+    this.sound = new Audio("boom.wav");
     this.timeSinceLastFrame = 0;
-    this.frameInterval = 200;
+    this.frameInterval = 180;
     this.markerForDeletion = false;
   }
   update(deltatime) {
-    if (this.frame === 0) this.sound.play();
+    if (this.frame === 0) {
+      try {
+        this.sound.currentTime = 0;
+        this.sound.play().catch(() => {});
+      } catch (e) {}
+    }
     this.timeSinceLastFrame += deltatime;
     if (this.timeSinceLastFrame > this.frameInterval) {
       this.frame++;
@@ -130,96 +351,148 @@ class Explosion {
   }
 }
 
-let particles = [];
-class Particle {
-  constructor(x, y, size, color) {
-    this.size = size;
-    this.x = x + this.size / 2 + Math.random() * 50 - 25;
-    this.y = y + this.size / 3 + Math.random() * 50 - 25;
-    this.radius = (Math.random() * this.size) / 10;
-    this.maxRadius = Math.random() * 20 + 35;
-    this.markedForDeletion = false;
-    this.speedX = Math.random() * 1 + 0.5;
-    this.color = color;
-  }
-  update() {
-    this.x += this.speedX;
-    this.radius += 0.3;
-    if (this.radius > this.maxRadius - 5) this.markedForDeletion = true;
-  }
-  draw() {
-    ctx.save();
-    ctx.globalAlpha = 1 - this.radius / this.maxRadius;
-    ctx.beginPath();
-    ctx.fillStyle = this.color;
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-}
-
-function drawScore() {
-  ctx.fillStyle = "black";
-  ctx.fillText("Score: " + score, 40, 65);
-  ctx.fillStyle = "white";
-  ctx.fillText("Score: " + score, 43, 68);
-}
-
-function drawGameOver() {
-  ctx.textAlign = "center";
-  ctx.fillStyle = "black";
-  ctx.fillText(
-    "GAME OVER, your score is " + score,
-    canvas.width / 2,
-    canvas.height / 2,
+// ===== DRAW UI =====
+function drawScoreAndLives() {
+  const fontSize = Math.max(
+    22,
+    Math.floor(Math.min(canvas.width, canvas.height) * 0.055),
   );
+  ctx.font = `${fontSize}px Impact`;
+  ctx.textAlign = "left";
+
+  // Score left
+  ctx.fillStyle = "black";
+  ctx.fillText("Score: " + score, 18, fontSize + 12);
   ctx.fillStyle = "white";
-  ctx.fillText(
-    "GAME OVER, your score is " + score,
-    canvas.width / 2 + 5,
-    canvas.height / 2 + 5,
-  );
+  ctx.fillText("Score: " + score, 20, fontSize + 14);
+
+  // Lives right
+  const livesText = "Lives: " + lives;
+  ctx.textAlign = "right";
+  ctx.fillStyle = "black";
+  ctx.fillText(livesText, canvas.width - 18, fontSize + 12);
+  ctx.fillStyle = lives <= 2 ? "#ff4444" : "white";
+  ctx.fillText(livesText, canvas.width - 20, fontSize + 14);
+
+  // small heart indicators
+  ctx.textAlign = "right";
+  const heartY = fontSize + 14 + fontSize * 0.9;
+  let hearts = "";
+  for (let i = 0; i < 5; i++) {
+    hearts += i < lives ? "♥ " : "♡ ";
+  }
+  ctx.font = `${Math.max(16, fontSize * 0.7)}px Arial`;
+  ctx.fillStyle = lives <= 2 ? "#ff3333" : "#ff6666";
+  ctx.fillText(hearts.trim(), canvas.width - 20, heartY);
 }
 
-window.addEventListener("click", (e) => {
-  const detectPixelColor = collisionCtx.getImageData(e.x, e.y, 1, 1);
+function drawBackground() {
+  if (!bgImage.complete || bgImage.naturalWidth === 0) {
+    ctx.fillStyle = "#0a0a15";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+  // cover style
+  const imgRatio = bgImage.width / bgImage.height;
+  const canvasRatio = canvas.width / canvas.height;
+  let drawW,
+    drawH,
+    offsetX = 0,
+    offsetY = 0;
+  if (canvasRatio > imgRatio) {
+    drawW = canvas.width;
+    drawH = canvas.width / imgRatio;
+    offsetY = (canvas.height - drawH) / 2;
+  } else {
+    drawH = canvas.height;
+    drawW = canvas.height * imgRatio;
+    offsetX = (canvas.width - drawW) / 2;
+  }
+  ctx.drawImage(bgImage, offsetX, offsetY, drawW, drawH);
+  // subtle dark overlay so enemies pop against brighter scenes
+  ctx.fillStyle = "rgba(0,0,0,0.18)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+// ===== INPUT (mouse + touch) =====
+function handleShoot(clientX, clientY) {
+  if (gameOver || !gameStarted) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = ((clientX - rect.left) / rect.width) * canvas.width;
+  const y = ((clientY - rect.top) / rect.height) * canvas.height;
+
+  const detectPixelColor = collisionCtx.getImageData(
+    Math.floor(x),
+    Math.floor(y),
+    1,
+    1,
+  );
   const pc = detectPixelColor.data;
-  ravens.forEach((object) => {
+  enemies.forEach((object) => {
     if (
       object.randomColors[0] === pc[0] &&
       object.randomColors[1] === pc[1] &&
       object.randomColors[2] === pc[2]
     ) {
-      //  collision detected
       object.markerForDeletion = true;
       score++;
       explosions.push(new Explosion(object.x, object.y, object.width));
+      // slightly increase spawn rate
+      if (enemyInterval > 220) enemyInterval -= 4;
     }
   });
+}
+
+window.addEventListener("click", (e) => {
+  handleShoot(e.clientX, e.clientY);
 });
 
+window.addEventListener(
+  "touchstart",
+  (e) => {
+    e.preventDefault();
+    if (e.touches.length > 0) {
+      handleShoot(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  },
+  { passive: false },
+);
+
+// ===== ANIMATE =====
 function animate(timestamp) {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!gameStarted) return;
+
+  drawBackground();
   collisionCtx.clearRect(0, 0, canvas.width, canvas.height);
+
   let deltaTime = timestamp - lastTime;
+  if (deltaTime > 50) deltaTime = 50; // clamp for tab switches
   lastTime = timestamp;
-  timeToNextRaven += deltaTime;
-  if (timeToNextRaven > ravenInterval) {
-    ravens.push(new Raven());
-    timeToNextRaven = 0;
-    ravens.sort((a, b) => {
-      return a.width - b.width;
-    });
+
+  timeToNextEnemy += deltaTime;
+  if (timeToNextEnemy > enemyInterval) {
+    enemies.push(new Enemy());
+    timeToNextEnemy = 0;
+    enemies.sort((a, b) => a.width - b.width);
   }
-  drawScore();
-  [...particles, ...ravens, ...explosions].forEach((object) =>
-    object.update(deltaTime),
-  );
-  [...particles, ...ravens, ...explosions].forEach((object) => object.draw());
-  ravens = ravens.filter((object) => !object.markerForDeletion);
-  explosions = explosions.filter((object) => !object.markerForDeletion);
-  particles = particles.filter((object) => !object.markerForDeletion);
-  if (!gameOver) requestAnimationFrame(animate);
-  else drawGameOver();
+
+  drawScoreAndLives();
+
+  [...enemies, ...explosions].forEach((obj) => obj.update(deltaTime));
+  [...enemies, ...explosions].forEach((obj) => obj.draw());
+
+  enemies = enemies.filter((o) => !o.markerForDeletion);
+  explosions = explosions.filter((o) => !o.markerForDeletion);
+
+  if (!gameOver) {
+    requestAnimationFrame(animate);
+  } else {
+    // show overlay
+    finalScoreEl.textContent = "Your score: " + score;
+    gameOverEl.classList.remove("hidden");
+  }
 }
-animate(0);
+
+// ===== BOOT =====
+buildMenu();
+resizeCanvas();

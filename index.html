@@ -1,12 +1,37 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Point & shoot</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Point & Shoot</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <!-- Start Menu -->
+    <div id="menu">
+      <h1>Point &amp; Shoot</h1>
+      <p class="subtitle">Select your enemy and battlefield</p>
+
+      <div class="section">
+        <h2>Choose Enemy</h2>
+        <div id="enemy-select" class="select-grid"></div>
+      </div>
+
+      <div class="section">
+        <h2>Choose Place</h2>
+        <div id="place-select" class="select-grid"></div>
+      </div>
+
+      <button id="start-btn" disabled>Start Game</button>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div id="game-over" class="hidden">
+      <h2>GAME OVER</h2>
+      <p id="final-score">Your score: 0</p>
+      <button id="restart-btn">Play Again</button>
+    </div>
+
     <canvas id="collisionCanvas"></canvas>
     <canvas id="canvas1"></canvas>
     <script src="./script.js"></script>

@@ -1,8 +1,18 @@
-body {
-  background: linear-gradient(125deg, red, green, blue);
-  width: 100vw;
-  height: 100vh;
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
   overflow: hidden;
+  background: #000;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  touch-action: none;
+  user-select: none;
 }
 
 canvas {
@@ -11,8 +21,211 @@ canvas {
   left: 0;
   width: 100%;
   height: 100%;
+  display: block;
 }
 
 #collisionCanvas {
   opacity: 0;
+  pointer-events: none;
+}
+
+/* ===== MENU ===== */
+#menu {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: linear-gradient(160deg, #0a0a1a 0%, #1a0a2e 40%, #0d1b2a 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 20px 12px 40px;
+  overflow-y: auto;
+  color: #eee;
+}
+
+#menu h1 {
+  font-size: clamp(1.8rem, 6vw, 3rem);
+  letter-spacing: 2px;
+  text-shadow: 0 0 12px #ff4d4d, 0 0 24px #ff0000;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: clamp(0.85rem, 2.5vw, 1.1rem);
+  opacity: 0.75;
+  margin-bottom: 18px;
+  font-family: system-ui, sans-serif;
+  font-weight: 400;
+}
+
+.section {
+  width: 100%;
+  max-width: 720px;
+  margin-bottom: 18px;
+}
+
+.section h2 {
+  font-size: clamp(1rem, 3vw, 1.35rem);
+  margin-bottom: 10px;
+  text-align: center;
+  letter-spacing: 1px;
+  color: #ffcc66;
+}
+
+.select-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+  justify-items: center;
+}
+
+.option-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 8px 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  width: 100%;
+  max-width: 140px;
+}
+
+.option-card:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+.option-card.selected {
+  border-color: #ff4d4d;
+  background: rgba(255, 70, 70, 0.18);
+  box-shadow: 0 0 14px rgba(255, 50, 50, 0.45);
+}
+
+.option-card img {
+  display: block;
+  max-width: 100%;
+  height: 72px;
+  object-fit: contain;
+  margin: 0 auto 6px;
+  image-rendering: pixelated;
+  background: #000;
+  border-radius: 8px;
+}
+
+.option-card.place img {
+  height: 64px;
+  width: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+  image-rendering: auto;
+  background: transparent;
+}
+
+.option-card span {
+  font-size: 0.78rem;
+  font-family: system-ui, sans-serif;
+  font-weight: 600;
+  display: block;
+  line-height: 1.2;
+}
+
+#start-btn {
+  margin-top: 12px;
+  padding: 14px 48px;
+  font-size: 1.25rem;
+  font-family: Impact, sans-serif;
+  letter-spacing: 2px;
+  background: linear-gradient(180deg, #ff5555, #cc0000);
+  color: white;
+  border: none;
+  border-radius: 40px;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(255, 0, 0, 0.4);
+  transition: transform 0.15s, opacity 0.2s;
+}
+
+#start-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+#start-btn:not(:disabled):hover {
+  transform: scale(1.05);
+}
+
+#start-btn:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* ===== GAME OVER ===== */
+#game-over {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  text-align: center;
+  padding: 20px;
+}
+
+#game-over.hidden {
+  display: none;
+}
+
+#game-over h2 {
+  font-size: clamp(2rem, 8vw, 3.5rem);
+  text-shadow: 0 0 20px #ff2222;
+  margin-bottom: 12px;
+}
+
+#final-score {
+  font-size: clamp(1.2rem, 4vw, 1.8rem);
+  margin-bottom: 28px;
+  font-family: system-ui, sans-serif;
+}
+
+#restart-btn {
+  padding: 14px 40px;
+  font-size: 1.2rem;
+  font-family: Impact, sans-serif;
+  letter-spacing: 1px;
+  background: linear-gradient(180deg, #44cc66, #228833);
+  color: white;
+  border: none;
+  border-radius: 40px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 200, 80, 0.35);
+}
+
+#restart-btn:hover {
+  transform: scale(1.05);
+}
+
+/* Mobile tweaks */
+@media (max-width: 500px) {
+  .select-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .option-card {
+    max-width: none;
+    padding: 6px 4px;
+  }
+  .option-card img {
+    height: 56px;
+  }
+  .option-card.place img {
+    height: 48px;
+  }
+  .option-card span {
+    font-size: 0.68rem;
+  }
 }
