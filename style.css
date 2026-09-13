@@ -8,11 +8,16 @@
 html, body {
   width: 100%;
   height: 100%;
+  height: 100dvh; 
   overflow: hidden;
   background: #000;
   font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
   touch-action: none;
   user-select: none;
+  -webkit-user-select: none;
+  overscroll-behavior: none;
+  position: fixed; scroll */
+  inset: 0;
 }
 
 canvas {
@@ -22,6 +27,8 @@ canvas {
   width: 100%;
   height: 100%;
   display: block;
+  touch-action: none;
+  -webkit-touch-callout: none;
 }
 
 #collisionCanvas {
@@ -40,7 +47,10 @@ canvas {
   align-items: center;
   justify-content: flex-start;
   padding: 20px 12px 40px;
+  padding-bottom: max(40px, env(safe-area-inset-bottom));
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y; 
   color: #eee;
 }
 
@@ -85,12 +95,14 @@ canvas {
   background: rgba(255, 255, 255, 0.06);
   border: 2px solid transparent;
   border-radius: 12px;
-  padding: 8px 6px;
+  padding: 10px 6px;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
   width: 100%;
   max-width: 140px;
+  min-height: 96px; 
+  -webkit-tap-highlight-color: transparent;
 }
 
 .option-card:hover {

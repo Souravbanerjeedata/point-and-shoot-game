@@ -106,7 +106,7 @@ let enemyImage = new Image();
 let currentEnemyConfig = null;
 
 let timeToNextEnemy = 0;
-let enemyInterval = 500;
+let enemyInterval = 700;
 let lastTime = 0;
 let score = 0;
 let lives = 5;
@@ -131,7 +131,7 @@ function buildMenu() {
     const card = document.createElement("div");
     card.className = "option-card";
     card.dataset.id = cfg.id;
-    // Use zoomed single-frame thumbnail, not the full sprite sheet
+
     card.innerHTML = `<img src="${cfg.thumb}" alt="${cfg.name}" /><span>${cfg.name}</span>`;
     card.addEventListener("click", () => {
       document
@@ -208,23 +208,44 @@ function resetGame() {
   explosions = [];
   timeToNextEnemy = 0;
   lastTime = 0;
-  enemyInterval = 500;
+  enemyInterval = 700;
   resizeCanvas();
 }
 
 // ===== CANVAS SIZE =====
+function getViewportSize() {
+  if (window.visualViewport) {
+    return {
+      w: Math.floor(window.visualViewport.width),
+      h: Math.floor(window.visualViewport.height),
+    };
+  }
+  return {
+    w: Math.floor(window.innerWidth),
+    h: Math.floor(window.innerHeight),
+  };
+}
+
 function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  collisionCanvas.width = window.innerWidth;
-  collisionCanvas.height = window.innerHeight;
-  // scale font based on screen
-  const base = Math.min(canvas.width, canvas.height);
+  const { w, h } = getViewportSize();
+
+  if (canvas.width === w && canvas.height === h) return;
+  canvas.width = w;
+  canvas.height = h;
+  collisionCanvas.width = w;
+  collisionCanvas.height = h;
+  const base = Math.min(w, h);
   ctx.font = `${Math.max(28, Math.floor(base * 0.06))}px Impact`;
 }
+
 window.addEventListener("resize", () => {
   if (gameStarted && !gameOver) resizeCanvas();
 });
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", () => {
+    if (gameStarted && !gameOver) resizeCanvas();
+  });
+}
 
 // ===== CLASSES =====
 class Enemy {
@@ -248,7 +269,7 @@ class Enemy {
     const curMin = baseMin + (finalMin - baseMin) * t;
     const curMax = baseMax + (finalMax - baseMax) * t;
     this.directionX = Math.random() * (curMax - curMin) + curMin;
-    this.directionY = Math.random() * 3 - 1.5; // also slightly calmer vertical
+    this.directionY = Math.random() * 3 - 1.5;
 
     this.markerForDeletion = false;
     this.image = enemyImage;
@@ -414,20 +435,29 @@ function drawBackground() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-// ===== INPUT (mouse + touch) =====
+// ===== INPUT (pointer events = mouse + touch + pen, no double-fire) =====
 function handleShoot(clientX, clientY) {
   if (gameOver || !gameStarted) return;
+
   const rect = canvas.getBoundingClientRect();
+  // Guard against zero-size rect (can happen briefly on mobile orientation change)
+  if (rect.width < 1 || rect.height < 1) return;
+
   const x = ((clientX - rect.left) / rect.width) * canvas.width;
   const y = ((clientY - rect.top) / rect.height) * canvas.height;
 
-  const detectPixelColor = collisionCtx.getImageData(
-    Math.floor(x),
-    Math.floor(y),
-    1,
-    1,
-  );
+  // Clamp to canvas bounds
+  const px = Math.max(0, Math.min(canvas.width - 1, Math.floor(x)));
+  const py = Math.max(0, Math.min(canvas.height - 1, Math.floor(y)));
+
+  let detectPixelColor;
+  try {
+    detectPixelColor = collisionCtx.getImageData(px, py, 1, 1);
+  } catch (err) {
+    return; // security / tainted canvas edge case
+  }
   const pc = detectPixelColor.data;
+
   enemies.forEach((object) => {
     if (
       object.randomColors[0] === pc[0] &&
@@ -437,26 +467,38 @@ function handleShoot(clientX, clientY) {
       object.markerForDeletion = true;
       score++;
       explosions.push(new Explosion(object.x, object.y, object.width));
-      // slightly increase spawn rate
-      if (enemyInterval > 220) enemyInterval -= 4;
+      if (enemyInterval > 350) enemyInterval -= 4;
     }
   });
 }
 
-window.addEventListener("click", (e) => {
-  handleShoot(e.clientX, e.clientY);
-});
-
-window.addEventListener(
-  "touchstart",
+canvas.style.touchAction = "none";
+canvas.addEventListener(
+  "pointerdown",
   (e) => {
+    if (!e.isPrimary) return;
     e.preventDefault();
-    if (e.touches.length > 0) {
-      handleShoot(e.touches[0].clientX, e.touches[0].clientY);
-    }
+    handleShoot(e.clientX, e.clientY);
   },
   { passive: false },
 );
+
+// Fallback for older browsers that lack Pointer Events
+if (!window.PointerEvent) {
+  canvas.addEventListener("click", (e) => {
+    handleShoot(e.clientX, e.clientY);
+  });
+  canvas.addEventListener(
+    "touchstart",
+    (e) => {
+      e.preventDefault();
+      if (e.touches.length > 0) {
+        handleShoot(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    },
+    { passive: false },
+  );
+}
 
 // ===== ANIMATE =====
 function animate(timestamp) {
