@@ -1,10 +1,14 @@
 # Point & Shoot Game
 
+<div align="center">
+    <img src="preview.png" alt="Project Banner" width='1918' height='939' >
+</div>
+
 A fun browser-based point-and-shoot game. Click or tap the flying enemies before they escape!
 
 ## How to Play
 
-1. Open `index.html` in any modern browser (Chrome, Firefox, Safari, Edge).
+1. Visit **[Site](https://souravbanerjeedata.github.io/point-and-shoot-game/)** or Open `index.html` in any modern browser (Chrome, Firefox, Safari, Edge).
 2. On the start screen, choose an **enemy** and a **place**.
 3. Click **Start Game**.
 4. Click / tap the enemies to shoot them and score points.
@@ -13,10 +17,10 @@ A fun browser-based point-and-shoot game. Click or tap the flying enemies before
 
 ## Controls
 
-| Platform | Action          |
-|----------|-----------------|
-| Desktop  | Mouse click     |
-| Mobile   | Touch / tap     |
+| Platform | Action      |
+| -------- | ----------- |
+| Desktop  | Mouse click |
+| Mobile   | Touch / tap |
 
 ## Features
 
@@ -26,24 +30,3 @@ A fun browser-based point-and-shoot game. Click or tap the flying enemies before
 - Speed starts slow and gradually increases every 10 kills (up to a cap)
 - Explosion effects and sound
 - Fully mobile-friendly responsive UI
-
-## Project Structure
-
-```
-├── index.html          # Main page + menu
-├── style.css           # Styles (responsive)
-├── script.js           # Game logic
-├── README.md           # This file
-├── boom.png / boom.wav # Explosion sprite & sound
-├── raven.png           # Original raven sprite sheet
-├── enemy_*.png         # Other enemy sprite sheets
-├── thumbs/             # Zoomed single-frame previews for menu
-└── backgrounds/        # Place images
-```
-
-## Credits
-
-- Original game concept inspired by classic point-and-shoot tutorials
-- Enemy sprites and backgrounds provided by the project author
-
-Enjoy the game!
